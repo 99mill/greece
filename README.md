@@ -1,73 +1,70 @@
-# React + TypeScript + Vite
+# Greece Trip Companion
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A private, offline-capable PWA for an upcoming trip to **Larissa, Greece** —
+built around traveling with a family member in **stage 5 chronic kidney
+disease**. Works on a laptop in the browser and installs to an iPhone home
+screen as an app.
 
-Currently, two official plugins are available:
+## What it does
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Diet plan** — common Greek dishes rated for a renal diet (potassium,
+  phosphorus, sodium, fluid, protein), searchable. Works with **no signal**.
+- **Medical resources** — verified emergency numbers (112 / 166), Larissa
+  hospitals, and a dialysis travel checklist. Works with **no signal**.
+- **Itinerary** — a simple CRUD day planner. Saved on-device, so it also works
+  offline.
 
-## React Compiler
+## Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Layer | Choice |
+|---|---|
+| Framework | **Vite 8 + React 19** SPA (no SSR/SEO needed for a private app) |
+| Routing | React Router |
+| Styling | **Tailwind v4**, themed from `design.md` (Linear dark palette) |
+| UI components | **shadcn (Base UI primitives)** → `components/ui` *(pending allowlist, see below)* |
+| Offline/PWA | **vite-plugin-pwa** (Workbox). App shell + data precached. |
+| Backend (sync) | **Convex** + Convex Auth (email magic-link/OTP + phone OTP) *(code written; pending allowlist)* |
 
-## Expanding the ESLint configuration
+### Why offline works without a backend
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+The safety-critical screens — **diet** and **medical** — are static data
+bundled into the app (`src/data/`) and precached by the service worker, so they
+render with zero connectivity. The itinerary uses `localStorage`
+(`src/store/itinerary.ts`), so it's also fully offline. Convex is an *additive*
+sync layer (multi-device, journal, photos), not a dependency for the core.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Develop
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+pnpm install
+pnpm dev        # http://localhost:5173
+pnpm build      # typecheck + production build (also emits the service worker)
+pnpm lint
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## ⚠️ Network egress requirement
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+This environment's egress allowlist currently permits only `registry.npmjs.org`
+and `github.com`. Two setup steps are **blocked** until these hosts are added to
+the environment's network egress settings:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- `ui.shadcn.com` — to run the shadcn CLI and pull Base UI components
+- `convex.dev`, `*.convex.cloud`, `*.convex.site` — to provision/run Convex
+
+Once allowlisted:
+
+```bash
+# Components → components/ui (Base UI primitives, themed by design.md tokens)
+npx shadcn@latest init --base base --template vite --preset nova
+npx shadcn@latest add button card dialog input select checkbox badge \
+  tabs sheet sonner dropdown-menu label textarea separator
+
+# Backend
+npx convex dev        # provisions deployment, generates convex/_generated
+# then set auth secrets:
+npx convex env set AUTH_RESEND_KEY ...
+npx convex env set AUTH_TWILIO_ACCOUNT_SID ...   # + AUTH_TWILIO_AUTH_TOKEN, AUTH_TWILIO_FROM
 ```
+
+See `ROADMAP.md` for the stretch goals (photos, journal, journey map) and how
+the schema/EXIF pieces fit together.
